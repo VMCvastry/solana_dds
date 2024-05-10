@@ -1,0 +1,4 @@
+.config/solana
+**/Cargo.lock
+**/target
+test-ledger
