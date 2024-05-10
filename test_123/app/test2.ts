@@ -1,4 +1,4 @@
-import * as anchor from "@project-serum/anchor";
+import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, Connection, clusterApiUrl } from "@solana/web3.js";
 import fs from "fs/promises";
 
@@ -37,7 +37,9 @@ async function call(
 	args: any,
 	wallet: anchor.Wallet
 ) {
-	const res = await program.methods[instruction](minimumPriorityFee)
+	const res = await program.methods[instruction](
+		new anchor.BN(minimumPriorityFee)
+	)
 		.accounts({
 			payer: wallet.publicKey,
 		})
@@ -73,7 +75,7 @@ async function main() {
 		await fs.readFile("../target/idl/test_fees.json", "utf8")
 	);
 	console.log("IDL, ", idl);
-	const program = new anchor.Program(idl!, programId, provider);
+	const program = new anchor.Program(idl!, provider);
 	console.log("Program, ", program);
 
 	await call(

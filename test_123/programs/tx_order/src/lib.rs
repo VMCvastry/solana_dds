@@ -18,7 +18,10 @@ pub mod tx_order {
 
     pub fn get_transactions(ctx: Context<GetTransactions>) -> Result<Vec<TransactionRecord>> {
         Ok(ctx.accounts.transaction_log.records.clone())
-    } 
+    }
+    pub fn get_transaction(ctx: Context<GetTransactions>, index: u64) -> Result<TransactionRecord> {
+        Ok(ctx.accounts.transaction_log.records[index as usize].clone())
+    }  
 }
 
 #[account]
@@ -34,7 +37,7 @@ pub struct TransactionRecord {
  
 #[derive(Accounts)]
 pub struct RecordTransaction<'info> {
-    #[account(init_if_needed, payer = user, space = 50_000)]//mut // ~ 1000 transactions
+    #[account(init_if_needed, payer = user, space = 10_000)]//mut // ~ 200 transactions
     pub transaction_log: Account<'info, TransactionLog>,
     #[account(mut)]
     pub user: Signer<'info>,
