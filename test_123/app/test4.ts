@@ -1,5 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, Connection, clusterApiUrl } from "@solana/web3.js";
+import {
+	PublicKey,
+	Connection,
+	clusterApiUrl,
+	ComputeBudgetProgram,
+	TransactionInstruction,
+} from "@solana/web3.js";
+
 import fs from "fs/promises";
 import * as borsh from "borsh";
 
@@ -121,8 +128,22 @@ async function main() {
 	for (let i = 0; i < 10; i++) {
 		const transactionId = new anchor.BN(i);
 
-		const latestBlockhash = await provider.connection.getLatestBlockhash();
-		const tx = await program.methods
+		// const { blockhash } = await provider.connection.getLatestBlockhash(
+		// 	"finalized"
+		// );
+		const tx = new anchor.web3.Transaction();
+
+		// const computeLimit = ComputeBudgetProgram.setComputeUnitLimit({
+		// 	units: 1000000,
+		// });
+
+		const priorityFee = ComputeBudgetProgram.setComputeUnitPrice({
+			microLamports: 1 * (10 - i),
+		});
+		// tx.add(computeLimit);
+		tx.add(priorityFee);
+
+		const userTransaction = await program.methods
 			.recordTransaction(transactionId)
 			.accounts({
 				transactionLog: transactionLogKeypair.publicKey,
@@ -132,8 +153,9 @@ async function main() {
 			.signers([wallet.payer, transactionLogKeypair])
 			.transaction();
 
-		tx.feePayer = wallet.publicKey;
-		// tx.recentBlockhash = latestBlockhash.blockhash;
+		// userTransaction.recentBlockhash = blockhash;
+		userTransaction.feePayer = wallet.publicKey;
+		tx.add(userTransaction);
 		transactions.push(tx);
 	}
 
