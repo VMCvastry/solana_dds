@@ -72,6 +72,7 @@ async function waitCall(res: string) {
 			try {
 				const transactions = deserializeTransactionsData(data);
 				console.log("Deserialized transactions:", transactions);
+				analyzeOutput(transactions as any);
 			} catch (e) {
 				console.error("Failed to deserialize data:", e);
 			}
@@ -80,16 +81,17 @@ async function waitCall(res: string) {
 	}
 }
 
-async function main() {
-	// const transaction = deserializeTransactionData(
-	// 	"mnCc6ZcibCLQKszQPN+mQwuAYhGennpHPJDHLjC1t2EBAAAAAAAAAA=="
-	// );
-	// console.log("Deserialized transactions:", transaction);
-	// const transactions = deserializeTransactionsData(
-	// 	"AQAAAJpwnOmXImwi0CrM0DzfpkMLgGIRnp56RzyQxy4wtbdhAQAAAAAAAAA="
-	// );
-	// console.log("Deserialized transactions:", transactions);
+function analyzeOutput(txs: { transaction_id: anchor.BN }[]): void {
+	let disorderMeasure = 0;
 
+	for (let i = 0; i < txs.length; i++) {
+		disorderMeasure += Math.abs(Number(txs[i].transaction_id) - i);
+	}
+
+	console.log("Disorder Indicator (Module Distance):", disorderMeasure);
+}
+
+async function main() {
 	const wallet = await getWallet("../../.config/solana/id.json");
 	// Configure the client to use the local cluster.
 	const provider = new anchor.AnchorProvider(connection, wallet, {
@@ -109,21 +111,44 @@ async function main() {
 		"Transaction log public key: ",
 		transactionLogKeypair.publicKey.toBase58()
 	);
+	const confirmOptions = {
+		skipPreflight: true,
+		commitment: "processed" as any,
+		preflightCommitment: "processed" as any,
+	};
+
+	const transactions: any[] = [];
 	for (let i = 0; i < 10; i++) {
 		const transactionId = new anchor.BN(i);
 
-		const res = program.methods["recordTransaction"](transactionId)
+		const latestBlockhash = await provider.connection.getLatestBlockhash();
+		const tx = await program.methods
+			.recordTransaction(transactionId)
 			.accounts({
 				transactionLog: transactionLogKeypair.publicKey,
 				user: wallet.publicKey,
 				systemProgram: anchor.web3.SystemProgram.programId,
 			})
 			.signers([wallet.payer, transactionLogKeypair])
-			.rpc();
+			.transaction();
+
+		tx.feePayer = wallet.publicKey;
+		// tx.recentBlockhash = latestBlockhash.blockhash;
+		transactions.push(tx);
 	}
 
-	console.log("Waiting for 10 seconds...");
-	await new Promise((resolve) => setTimeout(resolve, 10000));
+	const sentTx = transactions.map((tx) =>
+		provider.sendAndConfirm(
+			tx,
+			[wallet.payer, transactionLogKeypair],
+			confirmOptions
+		)
+	);
+	const results = await Promise.all(sentTx);
+	console.log("All transactions have been processed:", results);
+
+	console.log("Waiting for 1 seconds...");
+	await new Promise((resolve) => setTimeout(resolve, 1000));
 	const res2 = await program.methods["getTransactions"]()
 		.accounts({
 			transactionLog: transactionLogKeypair.publicKey,
