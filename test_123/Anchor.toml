@@ -5,6 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+no_conflicts = "8BTxUsmr5vpof3bnJJHH9isvaQKrkds7qFNNQJutnBME"
 test_123 = "8zYFDuDS35MPcHsuQwzb6ed7cVdfzuVhES2DQPv1tjxJ"
 test_fees = "6mbUT8mwWxEsTHx1kThGjvnrF5kDEwEMhDJb8LSPnjuG"
 tx_order = "9DCP3wdVuR2vSzsJC15zdMNsDPfd5eEs5kTnTv8GqNJT"

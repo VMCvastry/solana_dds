@@ -11,7 +11,7 @@ run:
 -   use proj wallet:$ solana config set -k <project_pwd>/.config/solana/id.json
 
 create contract:
-cargo init hello_world --lib //NO use anchor init hello_world
+cargo init hello_world --lib //NO, use anchor init hello_world
 cd hello_world
 cargo add solana-program@"1.17.24"
 

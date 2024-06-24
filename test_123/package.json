@@ -2,9 +2,9 @@
 	"scripts": {
 		"lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
 		"lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "build": "anchor build -p tx_order",
-		"deploy": " anchor deploy -p tx_order",
-        "bd": "npm run build && npm run deploy"
+		"build": "anchor build -p $npm_config_project",
+		"deploy": "anchor deploy -p $npm_config_project",
+		"bd": "npm run build --project=$npm_config_project && npm run deploy --project=$npm_config_project"
 	},
 	"dependencies": {
 		"@coral-xyz/anchor": "^0.30.0"
