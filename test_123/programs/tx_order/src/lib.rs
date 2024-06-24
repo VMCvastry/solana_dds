@@ -19,6 +19,18 @@ pub mod tx_order {
     pub fn get_transactions(ctx: Context<GetTransactions>) -> Result<Vec<TransactionRecord>> {
         Ok(ctx.accounts.transaction_log.records.clone())
     }
+
+    pub fn get_paged_transactions(ctx: Context<GetTransactions>, page: u64) -> Result<Vec<TransactionRecord>> {
+        let records_per_page =25;
+        let start = (page * records_per_page) as usize;
+        let end = ((page + 1) * records_per_page) as usize;
+    
+        let records = &ctx.accounts.transaction_log.records;
+        let page_records: Vec<_> = records[start..end].iter().cloned().collect();
+    
+        Ok(page_records)
+    }
+
     pub fn get_transaction(ctx: Context<GetTransactions>, index: u64) -> Result<TransactionRecord> {
         Ok(ctx.accounts.transaction_log.records[index as usize].clone())
     }  
