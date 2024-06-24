@@ -8,47 +8,9 @@ import {
 } from "@solana/web3.js";
 
 import fs from "fs/promises";
-import * as borsh from "borsh";
-
-const programId = "9DCP3wdVuR2vSzsJC15zdMNsDPfd5eEs5kTnTv8GqNJT";
-const connection = new Connection("http://127.0.0.1:8899");
-
-const TransactionRecordSchema = {
-	struct: {
-		account_owner: { array: { type: "u8", len: 32 } },
-		transaction_id: "u64",
-	},
-};
-
-const VecTransactionRecordSchema = {
-	array: {
-		type: TransactionRecordSchema,
-	},
-};
-
-function deserializeTransactionsData(raw: string) {
-	const buffer = Buffer.from(raw, "base64");
-
-	return borsh.deserialize(VecTransactionRecordSchema, buffer);
-}
-
-function deserializeTransactionData(raw: string) {
-	const buffer = Buffer.from(raw, "base64");
-	return borsh.deserialize(TransactionRecordSchema, buffer);
-}
-
-export const getWallet = async (keyPairFile: string) => {
-	const payer = anchor.web3.Keypair.fromSecretKey(
-		Buffer.from(
-			JSON.parse(
-				await fs.readFile(keyPairFile, {
-					encoding: "utf-8",
-				})
-			)
-		)
-	);
-	return new anchor.Wallet(payer);
-};
+import { connection, getWallet } from "./test4/connection";
+import { deserializeTransactionsData } from "./test4/logUtils";
+import { analyzeOutput } from "./test4/analysisUtils";
 
 async function waitForConfirmation(connection: Connection, txSign: string) {
 	let result: any = null;
@@ -75,27 +37,17 @@ async function waitCall(res: string) {
 			JSON.stringify(confirmedTransaction.meta.returnData)
 		);
 		for (const data of confirmedTransaction.meta.returnData.data) {
-			console.log(Buffer.from(data, "base64").toString());
+			// console.log(Buffer.from(data, "base64").toString());
 			try {
 				const transactions = deserializeTransactionsData(data);
-				console.log("Deserialized transactions:", transactions);
-				analyzeOutput(transactions as any);
+				// console.log("Deserialized transactions:", transactions);
+				return transactions;
 			} catch (e) {
 				console.error("Failed to deserialize data:", e);
 			}
 			break;
 		}
 	}
-}
-
-function analyzeOutput(txs: { transaction_id: anchor.BN }[]): void {
-	let disorderMeasure = 0;
-
-	for (let i = 0; i < txs.length; i++) {
-		disorderMeasure += Math.abs(Number(txs[i].transaction_id) - i);
-	}
-
-	console.log("Disorder Indicator (Module Distance):", disorderMeasure);
 }
 
 async function main() {
@@ -125,7 +77,8 @@ async function main() {
 	};
 
 	const transactions: any[] = [];
-	for (let i = 0; i < 10; i++) {
+	const tot_txs = 200;
+	for (let i = 0; i < tot_txs; i++) {
 		const transactionId = new anchor.BN(i);
 
 		// const { blockhash } = await provider.connection.getLatestBlockhash(
@@ -138,7 +91,7 @@ async function main() {
 		// });
 
 		const priorityFee = ComputeBudgetProgram.setComputeUnitPrice({
-			microLamports: 1 * (10 - i),
+			microLamports: 100 * (tot_txs - i),
 		});
 		// tx.add(computeLimit);
 		tx.add(priorityFee);
@@ -171,14 +124,36 @@ async function main() {
 
 	console.log("Waiting for 1 seconds...");
 	await new Promise((resolve) => setTimeout(resolve, 1000));
-	const res2 = await program.methods["getTransactions"]()
-		.accounts({
-			transactionLog: transactionLogKeypair.publicKey,
-		})
-		.signers([wallet.payer])
-		.rpc();
+	// const res2 = await program.methods["getTransactions"]()
+	// 	.accounts({
+	// 		transactionLog: transactionLogKeypair.publicKey,
+	// 	})
+	// 	.signers([wallet.payer])
+	// 	.rpc();
 
-	await waitCall(res2);
+	// analyzeOutput((await waitCall(res2)) as any[]);
+
+	let txs: any[] = []; // Initialize txs as an empty array with type 'any[]'
+	let promises: any[] = [];
+	const rounds = Math.floor(tot_txs / 25);
+	for (let i = 0; i < rounds; i++) {
+		const res2 = await program.methods["getPagedTransactions"](
+			new anchor.BN(i)
+		)
+			.accounts({
+				transactionLog: transactionLogKeypair.publicKey,
+			})
+			.signers([wallet.payer])
+			.rpc();
+		promises.push(res2);
+	}
+
+	for (const promise of promises) {
+		analyzeOutput((await waitCall(promise)) as any[]);
+		txs.push(...((await waitCall(promise)) as any[]));
+	}
+
+	analyzeOutput(txs);
 }
 
 main().catch((err) => {
