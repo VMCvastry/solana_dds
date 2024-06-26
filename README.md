@@ -28,3 +28,5 @@ anchro new tx_order
 anchor build
 anchor deploy
 npx ts-node index.ts
+
+solana airdrop 100

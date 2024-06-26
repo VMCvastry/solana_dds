@@ -4,10 +4,11 @@ import {
 	Connection,
 	clusterApiUrl,
 	ComputeBudgetProgram,
+	LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import fs from "fs/promises";
 import * as borsh from "borsh";
-import { getWallet } from "./test4/connection";
+import { getWallet } from "../test4/connection";
 
 const programId = "8BTxUsmr5vpof3bnJJHH9isvaQKrkds7qFNNQJutnBME";
 const connection = new Connection("http://127.0.0.1:8899");
@@ -74,19 +75,45 @@ type Commitment =
 	| "singleGossip"
 	| "root"
 	| "max";
+async function transferSol(
+	provider: anchor.AnchorProvider,
+	senderWallet: anchor.Wallet,
+	recipientPublicKey: anchor.web3.PublicKey,
+	amount: number
+) {
+	const connection = provider.connection;
+	const transaction = new anchor.web3.Transaction().add(
+		anchor.web3.SystemProgram.transfer({
+			fromPubkey: senderWallet.publicKey,
+			toPubkey: recipientPublicKey,
+			lamports: amount * LAMPORTS_PER_SOL,
+		})
+	);
 
+	const signature = anchor.web3.sendAndConfirmTransaction(
+		connection,
+		transaction,
+		[senderWallet.payer],
+		{
+			commitment: "finalized",
+		}
+	);
+	return signature;
+}
 class NonConflicts {
 	program: anchor.Program;
 	wallet: anchor.Wallet;
+	provider: anchor.AnchorProvider;
 
 	constructor() {
 		this.program = {} as anchor.Program;
 		this.wallet = {} as anchor.Wallet;
+		this.provider = {} as anchor.AnchorProvider;
 	}
 
 	async init() {
 		this.wallet = await getWallet("../../.config/solana/id.json");
-		const provider = new anchor.AnchorProvider(connection, this.wallet, {
+		this.provider = new anchor.AnchorProvider(connection, this.wallet, {
 			commitment: "confirmed",
 		});
 
@@ -94,7 +121,10 @@ class NonConflicts {
 			await fs.readFile("../target/idl/non_conflicts.json", "utf8")
 		);
 		// console.log("IDL, ", idl);
-		this.program = new anchor.Program(idl!, provider) as anchor.Program;
+		this.program = new anchor.Program(
+			idl!,
+			this.provider
+		) as anchor.Program;
 	}
 
 	async callWrite(
@@ -112,10 +142,9 @@ class NonConflicts {
 					this.program.programId
 				)[0],
 				user: user.publicKey,
-				payer: this.wallet.publicKey,
 				systemProgram: anchor.web3.SystemProgram.programId,
 			})
-			.signers([user, this.wallet.payer]);
+			.signers([user]);
 		if (slow) {
 			txPayload.preInstructions([
 				ComputeBudgetProgram.setComputeUnitLimit({
@@ -166,9 +195,9 @@ class NonConflicts {
 		for (const user of users) {
 			writes.push(this.callWrite(user, commitment, false));
 		}
-		console.log("All data written in ", Date.now() - s_time, "ms");
+		console.log("All transactions sent in ", Date.now() - s_time, "ms");
 		await Promise.all(writes);
-		console.log("waited in ", Date.now() - s_time, "ms");
+		console.log("Committed in ", Date.now() - s_time, "ms");
 	}
 
 	async banchReads(users: anchor.web3.Keypair[], commitment: Commitment) {
@@ -178,9 +207,9 @@ class NonConflicts {
 		for (const user of users) {
 			reads.push(this.callRead(user, commitment));
 		}
-		console.log("All data read in ", Date.now() - s_time, "ms");
+		console.log("All transactions sent in ", Date.now() - s_time, "ms");
 		await Promise.all(reads);
-		console.log("waited in ", Date.now() - s_time, "ms");
+		console.log("Committed in ", Date.now() - s_time, "ms");
 	}
 
 	async banchMixed(users: anchor.web3.Keypair[], commitment: Commitment) {
@@ -194,9 +223,9 @@ class NonConflicts {
 				txs.push(this.callRead(user, commitment));
 			}
 		}
-		console.log("All data in ", Date.now() - s_time, "ms");
+		console.log("All transactions sent in ", Date.now() - s_time, "ms");
 		await Promise.all(txs);
-		console.log("waited in ", Date.now() - s_time, "ms");
+		console.log("Committed in ", Date.now() - s_time, "ms");
 	}
 
 	async banchMixedWithRandomConflicts(
@@ -259,9 +288,9 @@ class NonConflicts {
 		for (const user of benchUsers) {
 			txs.push(this.callWrite(user, commitment, false));
 		}
-		console.log("All data in ", Date.now() - s_time, "ms");
+		console.log("All transactions sent in ", Date.now() - s_time, "ms");
 		await Promise.all(txs);
-		console.log("waited in ", Date.now() - s_time, "ms");
+		console.log("Committed in ", Date.now() - s_time, "ms");
 	}
 
 	async banchSelectiveWait(
@@ -326,13 +355,13 @@ class NonConflicts {
 		const s_time = Date.now();
 		let txs: Promise<string>[] = [];
 		for (const user of benchUsers) {
-			txs.push(this.callWrite(user, commitment, true));
+			txs.push(this.callWrite(user, commitment, false));
 			// await new Promise((resolve) => setTimeout(resolve, 1)); // with this the free avg seems a bit lower
 			// txs.push(this.callRead(user, commitment));
 		}
 
 		const times: number[] = Array.from({ length: txs.length });
-		console.log("All data in ", Date.now() - s_time, "ms");
+		console.log("All transactions sent in ", Date.now() - s_time, "ms");
 		// freeTxt.then((res) => {
 		// 	console.log("Free tx finished in ", Date.now() - s_time, "ms");
 		// });
@@ -348,9 +377,9 @@ class NonConflicts {
 		}
 
 		await Promise.all(txs);
-		console.log("waited in ", Date.now() - s_time, "ms");
+		console.log("Committed in ", Date.now() - s_time, "ms");
 
-		console.log(times);
+		// console.log(times);
 		const avg = times.reduce((a, b) => a + b, 0) / times.length;
 		console.log("Average time: ", avg);
 
@@ -388,15 +417,35 @@ class NonConflicts {
 		// await waitCall(await this.callRead(users[86]));
 	}
 
+	async benchLevels(users: anchor.web3.Keypair[]) {
+		await this.banchWrites(users, "finalized");
+		await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
+
+		await this.banchWrites(users, "confirmed");
+		await new Promise((resolve) => setTimeout(resolve, 25 * 1000));
+
+		await this.banchWrites(users, "processed");
+	}
+
 	async runBenchmarks(commitment: Commitment) {
 		await this.init();
 		let s_time = Date.now();
 		let users: anchor.web3.Keypair[] = [];
+		let fTxs: Promise<string>[] = [];
 		for (let i = 0; i < 100; i++) {
 			const user = anchor.web3.Keypair.generate();
 			users.push(user);
+			fTxs.push(
+				transferSol(this.provider, this.wallet, user.publicKey, 0.1)
+			);
 		}
+		// await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+
 		console.log("Users generated in ", Date.now() - s_time, "ms");
+		await Promise.all(fTxs);
+		console.log("user funded in", Date.now() - s_time, "ms");
+
+		await this.benchLevels(users);
 
 		// await this.banchWrites(users, commitment);
 		// await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
@@ -413,7 +462,7 @@ class NonConflicts {
 		// await this.banchWrites(users, commitment);
 	}
 }
-new NonConflicts().runBenchmarks("confirmed").catch((err) => {
+new NonConflicts().runBenchmarks("processed").catch((err) => {
 	console.error(err);
 });
 

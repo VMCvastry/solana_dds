@@ -33,12 +33,10 @@ pub mod non_conflicts {
 
 #[derive(Accounts)]
 pub struct UpsertUserData<'info> {
-    #[account(init_if_needed, payer = payer, space = 8 + 8 + 8, seeds = [user.key().as_ref()], bump)]
+    #[account(init_if_needed, payer = user, space = 8 + 8 + 8, seeds = [user.key().as_ref()], bump)]
     pub user_data: Account<'info, UserData>,
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
