@@ -1,0 +1,25 @@
+1 Introduction 
+2 Crisis Overview 
+3 The Solana Blockchain 
+  3.1 Introduction
+  3.2 History Of Solana
+    3.2.1 Development Timeline: Tracing Key Milestones and Updates 
+    3.2.2 Growth and Adoption: Charting Solana’s Rise in Popularity 
+  3.3 Purpose and Intents
+  3.4 Technical Overview 
+  3.5 Challenges and Issues 
+4 Technical Causes 
+  ...
+5 Priority Fees 
+  5.1 Overview 
+  5.2 The failure 
+  5.3 The fix 
+6 Scheduling
+  6.1 Legacy scheduler 
+    6.1.1 Local queue 
+    6.1.2 Replicating the prioritization jitter 
+  6.2 Central scheduler 
+    6.2.1 Proving the prioritization consistency
+7 Conclusions 
+8 Appendix 
+References 

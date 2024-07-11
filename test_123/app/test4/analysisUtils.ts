@@ -29,6 +29,10 @@ export function analyzeOutput(txs: { transaction_id: anchor.BN }[]): void {
 // Disorder Indicator (Subsequence): ~ 4  with 4 threads
 // Disorder Indicator (Subsequence): ~ 7  with 5 threads
 
+// 3
+// 41
+// 65 6
+
 // export BLOCK_PRODUCTION_METHOD=central-scheduler
 // Requires higher difference in priority fee to be determenistic
 // Disorder Indicator (Subsequence): ~ 2-3 with 3 threads (if transactions arrive between two steps SHOULD BE 1)
@@ -36,3 +40,12 @@ export function analyzeOutput(txs: { transaction_id: anchor.BN }[]): void {
 // Disorder Indicator (Subsequence): ~ 3  with 5 threads
 // Disorder Indicator (Subsequence): ~ 3  with 6 threads
 // WIN!
+
+// 4
+// 11
+
+// IDEAS
+// Check fee/CU in old scheduler
+// Why high CU limit slows down the transactions
+// prioritization conflicting transactions
+// conflicting transactions times

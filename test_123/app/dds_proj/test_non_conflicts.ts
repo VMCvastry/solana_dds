@@ -212,7 +212,7 @@ class NonConflicts {
 		console.log("Committed in ", Date.now() - s_time, "ms");
 	}
 
-	async banchMixed(users: anchor.web3.Keypair[], commitment: Commitment) {
+	async benchMixed(users: anchor.web3.Keypair[], commitment: Commitment) {
 		console.log("Writing or reading data from users");
 		const s_time = Date.now();
 		let txs: Promise<string>[] = [];
